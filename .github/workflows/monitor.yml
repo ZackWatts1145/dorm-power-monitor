@@ -1,0 +1,43 @@
+name: power-monitor
+
+on:
+  schedule:
+    # 每 30 分钟一次（GitHub 的定时任务不保证准点，通常延迟几分钟）
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: power-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 冷却状态和历史读数存在缓存里，跨运行保留
+      - name: 恢复状态
+        uses: actions/cache@v4
+        with:
+          path: |
+            state.json
+            history.csv
+          key: pm-state-${{ github.run_id }}
+          restore-keys: |
+            pm-state-
+
+      - name: 生成配置
+        env:
+          ROOM_CODE: ${{ secrets.ROOM_CODE }}
+          SENDKEY: ${{ secrets.SENDKEY }}
+          THRESHOLD_KWH: ${{ vars.THRESHOLD_KWH }}
+        run: python bootstrap.py
+
+      - name: 巡检
+        run: python monitor.py

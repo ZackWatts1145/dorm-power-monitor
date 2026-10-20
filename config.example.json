@@ -1,0 +1,21 @@
+{
+  "base_url": "https://jxpt.nxist.com",
+  "room": {
+    "code": ""
+  },
+  "threshold": {
+    "energy_kwh": 5,
+    "money_yuan": 0
+  },
+  "notify": {
+    "channel": "auto",
+    "serverchan_key": "",
+    "pushplus_token": "",
+    "wecom_webhook": "",
+    "toast_fallback": true
+  },
+  "alert": {
+    "cooldown_hours": 12,
+    "heartbeat_failures": 3
+  }
+}

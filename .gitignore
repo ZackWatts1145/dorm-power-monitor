@@ -1,0 +1,16 @@
+# 本地配置与运行产物，不要提交
+config.json
+state.json
+history.csv
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store
