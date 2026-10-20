@@ -21,8 +21,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 没配置 Secrets 时安静跳过，避免定时任务一直报失败
+      - name: 检查配置
+        id: guard
+        env:
+          ROOM_CODE: ${{ secrets.ROOM_CODE }}
+          SENDKEY: ${{ secrets.SENDKEY }}
+        run: |
+          if [ -z "$ROOM_CODE" ] || [ -z "$SENDKEY" ]; then
+            echo "未配置 ROOM_CODE / SENDKEY，跳过本次运行"
+            echo "enabled=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=1" >> "$GITHUB_OUTPUT"
+          fi
+
       # 冷却状态和历史读数存在缓存里，跨运行保留
       - name: 恢复状态
+        if: steps.guard.outputs.enabled == '1'
         uses: actions/cache@v4
         with:
           path: |
@@ -33,6 +48,7 @@ jobs:
             pm-state-
 
       - name: 生成配置
+        if: steps.guard.outputs.enabled == '1'
         env:
           ROOM_CODE: ${{ secrets.ROOM_CODE }}
           SENDKEY: ${{ secrets.SENDKEY }}
@@ -40,4 +56,5 @@ jobs:
         run: python bootstrap.py
 
       - name: 巡检
+        if: steps.guard.outputs.enabled == '1'
         run: python monitor.py
