@@ -1,24 +1,25 @@
-# 宿舍电费监控
+# 宁夏理工学院 · 宿舍电费微信提醒
 
-在电费余额低于阈值时，主动通过微信提醒你。
+针对宁夏理工学院「缴费平台」小程序（`jxpt.nxist.com`）的宿舍电费自动查询：**余额低于阈值时通过微信提醒你**。
 
-只需要填**一个房间号**和**一个推送 key**。不用装 App，不用小程序一直开着，也不需要自己维护服务器（用 GitHub Actions 的话）。
+只需要填一个房间号和一个推送 key。不用装 App，不用小程序一直开着，也不用自己维护服务器（用 GitHub Actions 的话）。
 
-- 零第三方依赖，只用 Python 标准库
-- 自动按房间号解析电表，不用手填内部 ID
+- 学校电费单价 0.5 元/度，所以 `5 度 ≈ 2.5 元`
+- 只依赖 Python 标准库，不需要 `pip install` 任何东西
+- 自动按房间号解析电表，不用知道 roomId / meterId
 - 自带冷却、充值后重置、掉线告警、用量趋势
 - 每人跑自己的一份，只查自己的房间
 
-> 本工具只做只读查询，数据来源是学校缴费平台小程序调用的后端接口。使用前请阅读[免责声明](#免责声明)。
+> 本项目与学校官方无关，只做只读查询。使用前请阅读[免责声明](#免责声明)。
 
-## 它长什么样
+## 效果
 
 余额不足时，微信收到这样一条：
 
 ```
-电费余额不足 · A101
+电费余额不足 · 11201
 ──────────────
-房间: A101
+房间: 11201
 剩余电量: 4.80 度
 剩余金额: ¥2.40
 日均消耗: 3.20 度/天
@@ -28,6 +29,15 @@
 
 请及时充值，避免断电。
 ```
+
+## 房间号怎么找
+
+打开缴费平台小程序：
+
+- 首页「我的房间」区块能看到已绑定的房间号
+- 或者点「查找房间」，输入楼栋/房间关键词，列表里显示的就是房间号
+
+房间号形如 `11201`、`N5A101` 这种，**按小程序里显示的原样填**，不要自己加楼栋名。
 
 ## 快速开始
 
@@ -41,7 +51,7 @@
 
    | Name | Secret |
    |---|---|
-   | `ROOM_CODE` | 你的房间号，例如 `A101` |
+   | `ROOM_CODE` | 你的房间号，例如 `11201` |
    | `SENDKEY` | 你的 Server酱 SendKey（见下方[怎么拿 key](#微信推送怎么拿-key)） |
 
 3. 打开 fork 的 **Actions** 标签页，如果提示 workflow 未启用，点 **I understand my workflows, go ahead and enable them**
@@ -57,11 +67,11 @@
 ### 方式二：自己的电脑 / 服务器
 
 ```bash
-git clone <你的仓库地址>
-cd <仓库目录>
+git clone https://github.com/ZackWatts1145/nxist-power-monitor.git
+cd nxist-power-monitor
 
 cp config.example.json config.json
-# 编辑 config.json，至少填 room.code 和 notify.serverchan_key
+# 编辑 config.json，填 room.code 和 notify.serverchan_key
 
 python monitor.py --test     # 先验证能不能推到微信
 python monitor.py            # 正常巡检一次
@@ -69,19 +79,19 @@ python monitor.py            # 正常巡检一次
 
 跑通后挂到定时任务：
 
-- **Linux**：`crontab -e` 加一行 `*/30 * * * * cd /path/to/repo && /usr/bin/python3 monitor.py`
 - **Windows**：任务计划程序，每 30 分钟执行 `python monitor.py`
-- **macOS**：`launchd` 或直接用 `cron`
+- **Linux**：`crontab -e` 加一行 `*/30 * * * * cd /path/to/repo && /usr/bin/python3 monitor.py`
+- **macOS**：`launchd` 或 `cron`
 
-也可以跑在 Docker、树莓派、旧手机上（Termux），只要能联网和执行 Python。
+也可以跑在 Docker、树莓派上。
 
 ## 配置说明
 
 ```jsonc
 {
-  "base_url": "https://jxpt.nxist.com",   // 接口地址，换学校/换系统时改这里
+  "base_url": "https://jxpt.nxist.com",   // 学校缴费平台地址，一般不用改
   "room": {
-    "code": "A101"                        // 必填：你的房间号，小程序里显示的那个
+    "code": "11201"                       // 必填：你的房间号
   },
   "threshold": {
     "energy_kwh": 5,                      // 剩余电量 ≤ 这个数就提醒（度）
@@ -103,7 +113,11 @@ python monitor.py            # 正常巡检一次
 
 `channel` 设为 `auto` 时，配了哪个 key 就用哪个，都没配就退化成本机通知。
 
-阈值建议：按 0.5 元/度、日均 3 度算，`5 度` 大约提前一天多提醒，够你充值。想更早可以调到 10。
+阈值建议：学校 0.5 元/度，普通宿舍一天 2–4 度。
+
+- `5 度`：提前一天多提醒，够你充值，推荐
+- `10 度`：提前两三天，更保险
+- `1 度`：基本是断电前才响，不建议
 
 ## 微信推送怎么拿 key
 
@@ -123,10 +137,7 @@ python monitor.py            # 正常巡检一次
 
 ### 企业微信群机器人
 
-1. 在企业微信群里添加「群机器人」，复制 Webhook 地址
-2. 填到 `notify.wecom_webhook`
-
-消息会到企业微信，不在微信里。
+在企业微信群里添加「群机器人」，复制 Webhook 地址，填到 `notify.wecom_webhook`。消息会到企业微信，不在微信里。
 
 ## 命令
 
@@ -144,30 +155,34 @@ python test_monitor.py       # 自测，不需要真实 key
 
 ## 常见问题
 
+**提示「没找到房间」**
+
+房间号要和缴费平台里显示的一致。注意有些楼栋的编号带字母前缀（如 `N5A101`），有些是纯数字（如 `11201`），别自己拆分或补零。
+
+**换了宿舍怎么办**
+
+改 `config.json` 的 `room.code`（或 Actions 里的 `ROOM_CODE`），程序检测到房间号变了会自动重新解析。
+
+**返回「设备离线」或「设备查询超时」**
+
+`code=5000` 是电表离线（宿舍停电、网关故障），`reportStatus=1` 是查询超时。这两种会记为查询失败，连续 3 次会推「监控掉线」，等电表恢复后自动继续。
+
 **收不到微信消息**
 
 先看日志最后一行：
 
-- `notify serverchan -> 0 SUCCESS`：接口已接受。检查是否用 Turbo 的 key、是否在 sct.ftqq.com 里绑定了微信
+- `notify serverchan -> 0 SUCCESS`：接口已接受，检查是否用的 Turbo 的 key、是否在 sct.ftqq.com 绑定了微信
 - `notify serverchan -> 903` / 其他非 0：key 不对或已失效
 - `HTTP Error 403`：请求被 Cloudflare 拦了，确认用的是本项目自带的请求头（已内置浏览器 UA）
-- 没有任何 notify 日志：说明余额没低于阈值，属正常
+- 没有 notify 日志：余额没低于阈值，属正常
 
-**提示「没找到房间 A101」**
+**平台维护期间怎么办**
 
-房间号要和缴费平台里显示的一致（区分大小写但程序已做忽略处理），带楼栋前缀的也要带上。
-
-**GitHub Actions 里没有日志输出**
-
-确认 Secrets 名字是 `ROOM_CODE` 和 `SENDKEY`（全大写），且添加在当前 fork 仓库而不是上游仓库。
-
-**定时任务没按点跑**
-
-GitHub 的 schedule 是尽力而为，高峰期可能延迟十几分钟。要准点就用自己的服务器跑 cron。
+缴费平台偶尔会维护，这时接口会超时或返回非 JSON，程序记为失败但不会崩，恢复后自动继续。
 
 ## 隐私与安全
 
-- 本项目**不收集任何数据**，没有中心服务器，所有请求从你自己的机器/你的 GitHub Actions 发出
+- 本项目**不收集任何数据**，没有中心服务器，所有请求从你自己的机器或你的 GitHub Actions 发出
 - `config.json`、`state.json`、`history.csv`、`logs/` 都在 `.gitignore` 里，不会被提交
 - **SendKey 等同于密码**，泄露后别人可以往你微信发消息。用 Actions 时请放在 Secrets 里，不要写进代码
 - 本仓库不含任何人的房间号、手机号或 key
@@ -186,7 +201,7 @@ docs/how-it-works.md    # 接口和实现原理
 
 ## 免责声明
 
-- 本项目与学校及其缴费平台官方无关，不是官方工具。
+- 本项目与宁夏理工学院官方无关，不是官方工具。
 - 请只查询**自己**的房间，不要提高请求频率、不要批量采集或对外提供查询服务。
 - 接口随时可能变更、增加鉴权或停止服务，本项目不保证可用性。
 - 因使用本项目造成的任何后果（包括但不限于接口被封、数据错误、欠费断电）由使用者自行承担。
