@@ -238,10 +238,19 @@ def test_resolve() -> None:
         check("找不到房间应报错", "ZZZ" in str(exc), str(exc))
 
 
+def test_bom() -> None:
+    path = os.path.join(tempfile.mkdtemp(prefix="pm_bom_"), "config.json")
+    with open(path, "wb") as fh:
+        fh.write(b'\xef\xbb\xbf{"room": {"code": "X101"}}')
+    cfg = monitor.load_json(path, {})
+    check("兼容记事本保存的 BOM 配置", (cfg.get("room") or {}).get("code") == "X101", str(cfg))
+
+
 def main() -> int:
     test_channels()
     test_logic()
     test_resolve()
+    test_bom()
     width = max(len(n) for _, n, _ in results)
     for status, name, detail in results:
         line = f"[{status}] {name.ljust(width)}"

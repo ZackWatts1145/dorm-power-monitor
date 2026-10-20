@@ -53,8 +53,8 @@ jobs:
           ROOM_CODE: ${{ secrets.ROOM_CODE }}
           SENDKEY: ${{ secrets.SENDKEY }}
           THRESHOLD_KWH: ${{ vars.THRESHOLD_KWH }}
-        run: python bootstrap.py
+        run: python3 bootstrap.py
 
       - name: 巡检
         if: steps.guard.outputs.enabled == '1'
-        run: python monitor.py
+        run: python3 monitor.py

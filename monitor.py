@@ -50,8 +50,9 @@ def log(msg: str) -> None:
 
 
 def load_json(path: str, default: dict) -> dict:
+    # utf-8-sig：兼容记事本等编辑器保存时带 BOM 的 config.json
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, "r", encoding="utf-8-sig") as fh:
             return json.load(fh)
     except (OSError, ValueError):
         return default
